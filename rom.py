@@ -191,7 +191,7 @@ class BaseGenerator(tk.Toplevel):
     def process_input(self, addr):
         """Process input based on input bits and selected number type"""
         num_type = self.num_type.get()
-        
+    
         if self.input_bits == 32:
             bytes_in = [(addr >> (8*i)) & 0xFF for i in range(4)]
             if num_type == "int":
@@ -203,7 +203,7 @@ class BaseGenerator(tk.Toplevel):
                 real = struct.unpack('!f', bytes(bytes_in[:2] + [0, 0]))[0]
                 imag = struct.unpack('!f', bytes(bytes_in[2:] + [0, 0]))[0]
                 return complex(real, imag), 0
-                
+            
         elif self.input_bits == 16:
             a = addr & 0xFF
             b = (addr >> 8) & 0xFF
@@ -215,11 +215,13 @@ class BaseGenerator(tk.Toplevel):
                 return complex(a, b), 0
         else:  # 8-bit
             if num_type == "int":
-                return addr, 0
+                return addr, addr  # Changed from (addr, 0) to use same value for both operands
             elif num_type == "float":
-                return self.float8_to_float32(addr), 0
+                val = self.float8_to_float32(addr)
+                return val, val  # Changed from (val, 0) to use same value for both operands
             else:  # complex
-                return complex(addr, 0), 0
+                val = complex(addr, 0)
+                return val, val  # Changed from (val, 0) to use same value for both operands
     
     def vector_matrix_multiply(self, vector, matrix_size):
         """SIMD vector-matrix multiplication"""

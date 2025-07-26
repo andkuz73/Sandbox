@@ -1,224 +1,17 @@
-# Sand:box ROM Generator PRO 5.1 by: Andkuz (or Andkuz73 or cuzhima); tg: @cuzhima
-import sys
-import struct
+import cmath
+import importlib
 import math
-import numpy as np
 import random
 import re
-import importlib
-import cmath
-from typing import Dict, Any, Union
+import struct
+from typing import *
+from PySide6.QtCore import *
+from PySide6.QtGui import *
+from PySide6.QtWidgets import *
+import numpy as np
 
-from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QPushButton, QLabel, QComboBox, QRadioButton, QGroupBox, QLineEdit, QProgressBar,
-    QMessageBox, QFileDialog, QButtonGroup, QCheckBox, QSizePolicy, QScrollArea
-)
-from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtGui import QIcon, QFont, QPalette, QColor
-
-# Constants
 MAX_ROM_SIZE = 1 << 16  # 65536
 SAFE_BUILTINS = {"__builtins__": {}}
-
-class RomGeneratorApp(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Sand:box ROM Generator PRO 5.1 by Andkuz")
-        self.setMinimumSize(1000, 700)  # Increased minimum size
-        
-        # Apply modern style
-        self.setStyleSheet("""
-            QMainWindow {
-                background-color: #2D2D30;
-            }
-            QTabWidget::pane {
-                border: 0;
-                background: #252526;
-            }
-            QTabBar::tab {
-                background: #1E1E1E;
-                color: #D4D4D4;
-                padding: 8px 15px;
-                border-top-left-radius: 4px;
-                border-top-right-radius: 4px;
-                min-width: 100px;
-                font-size: 11px;
-            }
-            QTabBar::tab:selected {
-                background: #007ACC;
-                color: white;
-            }
-            QGroupBox {
-                border: 1px solid #3F3F46;
-                border-radius: 5px;
-                margin-top: 1ex;
-                font-weight: bold;
-                color: #D4D4D4;
-                background-color: #252526;
-                font-size: 12px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top center;
-                padding: 0 5px;
-            }
-            QLabel {
-                color: #D4D4D4;
-                font-size: 12px;
-            }
-            QPushButton {
-                background-color: #007ACC;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                padding: 8px 15px;
-                min-width: 100px;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background-color: #1C97EA;
-            }
-            QPushButton:pressed {
-                background-color: #0062A3;
-            }
-            QComboBox, QLineEdit {
-                background-color: #333337;
-                color: #D4D4D4;
-                border: 1px solid #3F3F46;
-                border-radius: 3px;
-                padding: 6px;
-                font-size: 12px;
-                min-height: 30px;
-            }
-            QProgressBar {
-                border: 1px solid #3F3F46;
-                border-radius: 3px;
-                text-align: center;
-                background: #252526;
-                font-size: 12px;
-                min-height: 25px;
-            }
-            QProgressBar::chunk {
-                background-color: #007ACC;
-            }
-            QRadioButton {
-                color: #D4D4D4;
-                spacing: 5px;
-                font-size: 12px;
-            }
-            QCheckBox {
-                color: #D4D4D4;
-                spacing: 5px;
-                font-size: 12px;
-            }
-        """)
-        
-        # Create main tab widget with scrolling tabs
-        self.tab_widget = QTabWidget()
-        self.tab_widget.setUsesScrollButtons(True)
-        self.setCentralWidget(self.tab_widget)
-        
-        # Create info tab first as requested
-        info_tab = QWidget()
-        info_layout = QVBoxLayout()
-        info_tab.setLayout(info_layout)
-        
-        info_label = QLabel(self.get_info_text())
-        info_label.setWordWrap(True)
-        info_label.setFont(QFont("Arial", 11))
-        info_layout.addWidget(info_label)
-        
-        # Add examples section
-        examples_group = QGroupBox("Usage Examples")
-        examples_layout = QVBoxLayout()
-        examples_group.setLayout(examples_layout)
-        
-        examples = [
-            "Bit reverse: bit_reverse(a, 8)",
-            "Rotate left: bit_rotate_left(a, 8, 2)",
-            "Complex operation: cmath.exp(a * 1j)",
-            "Vector dot product: np.dot([a, b], [b, a])",
-            "Custom math: math.sin(a) + math.cos(b)"
-        ]
-        
-        for example in examples:
-            example_label = QLabel(f"• {example}")
-            example_label.setFont(QFont("Courier New", 10))
-            examples_layout.addWidget(example_label)
-        
-        info_layout.addWidget(examples_group)
-        info_layout.addStretch()
-        
-        self.tab_widget.addTab(info_tab, "INFO")
-        
-        # Create configuration tabs
-        self.config_tabs = {}
-        configs = [
-            ("4-bit → 4-bit", 4, 4),
-            ("4-bit → 8-bit", 4, 8),
-            ("4-bit → 16-bit", 4, 16),
-            ("4-bit → 32-bit", 4, 32),
-            ("4-bit → 64-bit", 4, 64),
-            ("8-bit → 4-bit", 8, 4),
-            ("8-bit → 8-bit", 8, 8),
-            ("8-bit → 16-bit", 8, 16),
-            ("8-bit → 32-bit", 8, 32),
-            ("8-bit → 64-bit", 8, 64),
-            ("16-bit → 4-bit", 16, 4),
-            ("16-bit → 8-bit", 16, 8),
-            ("16-bit → 16-bit", 16, 16),
-            ("16-bit → 32-bit", 16, 32),
-            ("16-bit → 64-bit", 16, 64),
-            ("32-bit → 4-bit", 32, 4),
-            ("32-bit → 8-bit", 32, 8),
-            ("32-bit → 16-bit", 32, 16),
-            ("32-bit → 32-bit", 32, 32),
-            ("32-bit → 64-bit", 32, 64)
-        ]
-        
-        for text, in_bits, out_bits in configs:
-            tab = GeneratorTab(in_bits, out_bits)
-            self.config_tabs[f"{in_bits}to{out_bits}"] = tab
-            self.tab_widget.addTab(tab, text)
-    
-    def get_info_text(self):
-        return """
-        <h2>Sand:box ROM Generator PRO 5.1</h2>
-        <p>This tool generates ROM files for the Sand:box game by evaluating mathematical expressions over all possible input combinations.</p>
-        
-        <h3>How to Use:</h3>
-        <ol>
-            <li>Select the appropriate input/output configuration tab</li>
-            <li>Choose the operation type (predefined or custom)</li>
-            <li>Select number type (int, float, complex)</li>
-            <li>Configure output options</li>
-            <li>Click "Generate" to create the ROM data</li>
-            <li>Use "Copy ROM" or "Save ROM" to export the result</li>
-        </ol>
-        
-        <h3>Features:</h3>
-        <ul>
-            <li><b>Predefined operations:</b> sum, subtract, multiply, divide, vector-matrix multiply</li>
-            <li><b>Bit operations:</b> reverse, rotate, shift</li>
-            <li><b>Custom expressions:</b> Use Python syntax with variables 'a' and 'b'</li>
-            <li><b>Auto-imported modules:</b> math, cmath, random, numpy (as np)</li>
-            <li><b>Number types:</b> int, float, complex</li>
-            <li><b>Output options:</b> Full output or specific bytes</li>
-            <li><b>New:</b> Support for 4-bit operands</li>
-        </ul>
-        
-        <h3>Bit Manipulation Functions:</h3>
-        <ul>
-            <li><code>bit_reverse(value, bits)</code> - Reverse the bits of an integer</li>
-            <li><code>bit_rotate_left(value, bits, n)</code> - Rotate left by n bits</li>
-            <li><code>bit_rotate_right(value, bits, n)</code> - Rotate right by n bits</li>
-            <li><code>bit_shift_left(value, bits, n)</code> - Logical shift left by n bits</li>
-            <li><code>bit_shift_right(value, bits, n)</code> - Logical shift right by n bits</li>
-        </ul>
-        
-        <p>For custom operations, you can import additional modules using standard Python import syntax.</p>
-        """
 
 class GeneratorTab(QWidget):
     def __init__(self, input_bits, output_bits):
@@ -607,20 +400,20 @@ class GeneratorTab(QWidget):
         try:
             packed = struct.pack('!f', f)
             unpacked = struct.unpack('!I', packed)[0]
-            
-            sign = (unpacked >> 31) & 0x1
-            exponent = ((unpacked >> 23) & 0xFF) - 127
-            mantissa = unpacked & 0x7FFFFF
-            
-            if exponent < -2:
-                return 0x00 if sign == 0 else 0x80
-            
-            exponent_8 = max(0, min(7, exponent + 3))
-            mantissa_8 = (mantissa >> 19) & 0x0F
-            
-            return (sign << 7) | ((exponent_8 & 0x07) << 4) | (mantissa_8 & 0x0F)
-        except:
+        except struct.error:
             return 0
+            
+        sign = (unpacked >> 31) & 0x1
+        exponent = ((unpacked >> 23) & 0xFF) - 127
+        mantissa = unpacked & 0x7FFFFF
+        
+        if exponent < -2:
+            return 0x00 if sign == 0 else 0x80
+        
+        exponent_8 = max(0, min(7, exponent + 3))
+        mantissa_8 = (mantissa >> 19) & 0x0F
+        
+        return (sign << 7) | ((exponent_8 & 0x07) << 4) | (mantissa_8 & 0x0F)
     
     def generate(self):
         num_type = self.num_type.currentText()
@@ -777,33 +570,11 @@ class GeneratorTab(QWidget):
                 file_path += ".hex"
                 
             try:
-                with open(file_path, "w") as f:
+                with open(file_path, "w", encoding='ASCII') as f:
                     f.write(self.rom_data.hex())
-                QMessageBox.information(self, "Saved", f"ROM data saved to:\n{file_path}")
-            except Exception as e:
+            except IOError as e:
                 QMessageBox.critical(self, "Save Error", f"Error saving file: {e}")
+            else:
+                QMessageBox.information(self, "Saved", f"ROM data saved to:\n{file_path}")
 
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    app.setFont(QFont("Arial", 10))  # Set larger default font
-    app.setStyle("Fusion")  # Modern style
-    
-    # Create a dark palette
-    palette = QPalette()
-    palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
-    palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.Base, QColor(25, 25, 25))
-    palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
-    palette.setColor(QPalette.ColorRole.ToolTipBase, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
-    palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
-    palette.setColor(QPalette.ColorRole.Highlight, QColor(142, 45, 197).lighter())
-    palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
-    app.setPalette(palette)
-    
-    window = RomGeneratorApp()
-    window.show()
-    sys.exit(app.exec())
+

@@ -20,10 +20,10 @@ from PySide6.QtGui import QIcon, QFont, QPalette, QColor
 from .text import *
 from .gentab import *
 
-class RomGeneratorApp(QMainWindow):
+class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Sand:box ROM Generator 6.0 by Andkuz & KlasterK")
+        self.setWindowTitle("Sand:box ROM Generator 6.1 by Andkuz & KlasterK")
         self.setMinimumSize(1000, 700)  # Increased minimum size
         
         # Apply modern style
@@ -68,12 +68,7 @@ class RomGeneratorApp(QMainWindow):
         self.tab_widget.addTab(info_tab, "INFO")
         
         # Create configuration tabs
-        self.config_tabs = {}
         for in_bits in (4, 8, 16, 32, 64):
             for out_bits in (4, 8, 16, 32, 64):
-                id = f"{in_bits}to{out_bits}"
-                title = f'{in_bits}-bit → {out_bits}-bit'
-                
                 tab = GeneratorTab(in_bits, out_bits)
-                self.config_tabs[id] = tab
-                self.tab_widget.addTab(tab, title)
+                self.tab_widget.addTab(tab, f'{in_bits}-bit → {out_bits}-bit')

@@ -1,7 +1,7 @@
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPalette, QFont, QColor
 from PySide6.QtWidgets import QApplication
-from .mainwindow import RomGeneratorApp
+from .mainwindow import MainWindow
 import sys
 
 def main():
@@ -25,6 +25,6 @@ def main():
     palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
     app.setPalette(palette)
     
-    window = RomGeneratorApp()
+    window = MainWindow()
     window.show()
     sys.exit(app.exec())
